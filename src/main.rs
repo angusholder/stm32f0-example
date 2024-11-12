@@ -12,24 +12,32 @@ use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::entry;
 // use cortex_m_semihosting::hprint;
 use stm32f0::stm32f0x0::{interrupt, Interrupt, NVIC};
+use stm32f0xx_hal as hal;
+
+use crate::hal::{pac, prelude::*};
 
 #[entry]
 fn main() -> ! {
-    let p = cortex_m::Peripherals::take().unwrap();
+    let mut p = pac::Peripherals::take().unwrap();
 
-    let mut syst = p.SYST;
-    let mut nvic = p.NVIC;
+    let mut rcc = p.RCC.configure()
+        .sysclk(8.mhz())
+        .freeze(&mut p.FLASH);
 
+    let gpioa = p.GPIOA.split(&mut rcc);
+
+    let mut timer = stm32f0xx_hal::timers::Timer::tim1(p.TIM1, 60.hz(), &mut rcc);
+    
     unsafe { NVIC::unmask(Interrupt::EXTI0_1); }
 
     // configure the system timer to wrap around every second
-    syst.set_clock_source(SystClkSource::Core);
-    syst.set_reload(8_000_000); // 1s
-    syst.enable_counter();
+    // syst.set_clock_source(SystClkSource::Core);
+    // syst.set_reload(8_000_000); // 1s
+    // syst.enable_counter();
 
     loop {
-        // busy wait until the timer wraps around
-        while !syst.has_wrapped() {}
+        // // busy wait until the timer wraps around
+        // while !syst.has_wrapped() {}
 
         // trigger the `EXTI0` interrupt
         NVIC::pend(Interrupt::EXTI0_1);
